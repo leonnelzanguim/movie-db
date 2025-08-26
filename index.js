@@ -8,6 +8,8 @@ import { router as movieRouter } from './movie/index.js';
 
 const app = express();
 
+app.set('view engine', 'pug');
+
 const accesLogStream = createWriteStream('access.log', { flag: 'a' });
 
 app.use(express.static(`${dirname(fileURLToPath(import.meta.url))}/public`));

@@ -35,8 +35,9 @@ function update(movie) {
 function insert(movie) {
   movie.id = getNextId();
   data.push(movie);
+  console.log('data movie insert', movie);
 }
 
 function getNextId() {
-  return Math.max(...data.map((movie) => movie.id)) + 1;
+  return data.reduce((max, { id }) => Math.max(max, Number(id) || 0), 0) + 1;
 }

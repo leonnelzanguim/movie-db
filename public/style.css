@@ -15,3 +15,8 @@ td {
 tbody tr:hover {
   background-color: lightgrey;
 }
+img.logo {
+  position: absolute;
+  top: 0;
+  right: 10px;
+}
