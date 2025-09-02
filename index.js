@@ -5,7 +5,11 @@ import { fileURLToPath } from 'url';
 
 import { router as movieRouter } from './movie/index.js';
 
+import { initDb } from './movie/model.js';
+
 const app = express();
+
+await initDb();
 
 app.set('view engine', 'pug');
 
