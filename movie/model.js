@@ -1,33 +1,72 @@
-import mysql from 'mysql2/promise';
+//
 
-const connection = await mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'topSecret',
-  database: 'movie_db',
+import sqlite3 from 'sqlite3';
+
+// ouvre ou crée le fichier data.db
+const db = new sqlite3.Database('movie.db', (err) => {
+  if (err) {
+    console.error('Erreur ouverture DB:', err.message);
+  } else {
+    console.log('Connexion SQLite OK');
+  }
 });
 
-await connection.connect();
+db.run(
+  `
+  CREATE TABLE IF NOT EXISTS Movies (
+    id INTEGER PRIMARY KEY,
+    title TEXT,
+    year INTEGER
+  )
+`,
+  (err) => {
+    if (err) return console.error('Erreur création:', err.message);
+
+    console.log('Table prête');
+
+    // l'INSERT est appelé *après* la création
+    db.run(
+      `
+    INSERT INTO Movies (title, year) VALUES
+      ('Iron Man', 2008),
+      ('Thor', 2011),
+      ('Captain America', 2011)
+  `,
+      (err) => {
+        if (err) console.error('Erreur insertion:', err.message);
+        else console.log('Films insérés');
+      }
+    );
+  }
+);
 
 export async function getAll() {
-  const query = 'SELECT * FROM Movies';
-  const [data] = await connection.query(query);
-  return data;
+  return new Promise((resolve, reject) => {
+    const query = 'SELECT * FROM Movies';
+    db.all(query, (error, results) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(results);
+      }
+    });
+  });
 }
 
-export async function remove(id) {
-  const query = 'DELETE FROM Movies WHERE id = ?';
-  await connection.query(query, [id]);
-  return;
+function insert(movie) {
+  return new Promise((resolve, reject) => {
+    const query = 'INSERT INTO Movies (title, year) VALUES (?, ?)';
+    db.run(query, [movie.title, movie.year], (error, results) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(results);
+      }
+    });
+  });
 }
 
-export async function get(id) {
-  const query = 'SELECT * FROM Movies WHERE id = ?';
-  const [data] = await connection.query(query, [id]);
-  return data.pop();
-}
-
-export function save(movie) {
+export async function save(movie) {
   if (!movie.id) {
     return insert(movie);
   } else {
@@ -35,18 +74,41 @@ export function save(movie) {
   }
 }
 
-async function update(movie) {
-  const query = 'UPDATE Movies SET title = ?, year = ? WHERE id = ?';
-  await connection.query(query, [movie.title, movie.year, movie.id]);
-  return movie;
+function update(movie) {
+  return new Promise((resolve, reject) => {
+    const query = 'UPDATE Movies SET title = ?, year = ? WHERE id = ?';
+    db.run(query, [movie.title, movie.year, movie.id], (error, results) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(results);
+      }
+    });
+  });
 }
 
-async function insert(movie) {
-  const query = 'INSERT INTO Movies (title, year) VALUES (?, ?)';
-  const [result] = await connection.query(query, [movie.title, movie.year]);
-  return { ...movie, id: result.insertId };
+export async function get(id) {
+  return new Promise((resolve, reject) => {
+    const query = 'SELECT * FROM Movies WHERE id = ?';
+    db.get(query, [id], (error, results) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(results);
+      }
+    });
+  });
 }
 
-function getNextId() {
-  return data.reduce((max, { id }) => Math.max(max, Number(id) || 0), 0) + 1;
+export async function remove(id) {
+  return new Promise((resolve, reject) => {
+    const query = 'DELETE FROM Movies WHERE id = ?';
+    db.run(query, [id], (error, results) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(results);
+      }
+    });
+  });
 }
