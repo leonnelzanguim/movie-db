@@ -1,83 +1,75 @@
-//
+import { db } from './../db.js';
 
-import sqlite3 from 'sqlite3';
+export async function getAll(userId) {
+  return new Promise((resolve, reject) => {
+    const query = `SELECT Movies.*,
+                    count(Ratings.rating) AS numOfRatings,
+                    sum(Ratings.rating) AS sumOfRatings,
+                    r.rating AS userRating
+                    FROM Movies
+                    LEFT JOIN Ratings ON Movies.id = Ratings.movie
+                    LEFT JOIN Ratings AS r ON Movies.id = r.movie AND r.user = ?
+                    WHERE Movies.user = ? OR public = 1
+                    GROUP BY Movies.id;`;
+    db.all(query, [userId, userId], (error, results) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(results);
+      }
+    });
+  });
+}
 
-// ouvre ou crée le fichier data.db
-const db = new sqlite3.Database('movie.db', (err) => {
-  if (err) {
-    console.error('Erreur ouverture DB:', err.message);
-  } else {
-    console.log('Connexion SQLite OK');
-  }
-});
-
-db.run(
-  `
-  CREATE TABLE IF NOT EXISTS Movies (
-    id INTEGER PRIMARY KEY,
-    title TEXT,
-    year INTEGER
-  )
-`,
-  (err) => {
-    if (err) return console.error('Erreur création:', err.message);
-
-    console.log('Table prête');
-
-    // l'INSERT est appelé *après* la création
+function insert(movie, userId) {
+  return new Promise((resolve, reject) => {
+    const query =
+      'INSERT INTO Movies (title, year, public, user) VALUES (?, ?, ?, ?)';
     db.run(
-      `
-    INSERT INTO Movies (title, year) VALUES
-      ('Iron Man', 2008),
-      ('Thor', 2011),
-      ('Captain America', 2011)
-  `,
-      (err) => {
-        if (err) console.error('Erreur insertion:', err.message);
-        else console.log('Films insérés');
+      query,
+      [movie.title, movie.year, movie.public, userId],
+      (error, results) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(results);
+        }
       }
     );
-  }
-);
-
-export async function getAll() {
-  return new Promise((resolve, reject) => {
-    const query = 'SELECT * FROM Movies';
-    db.all(query, (error, results) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(results);
-      }
-    });
   });
 }
 
-function insert(movie) {
-  return new Promise((resolve, reject) => {
-    const query = 'INSERT INTO Movies (title, year) VALUES (?, ?)';
-    db.run(query, [movie.title, movie.year], (error, results) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(results);
-      }
-    });
-  });
-}
-
-export async function save(movie) {
+export async function save(movie, userId) {
   if (!movie.id) {
-    return insert(movie);
+    return insert(movie, userId);
   } else {
-    return update(movie);
+    return update(movie, userId);
   }
 }
 
-function update(movie) {
+function update(movie, userId) {
   return new Promise((resolve, reject) => {
-    const query = 'UPDATE Movies SET title = ?, year = ? WHERE id = ?';
-    db.run(query, [movie.title, movie.year, movie.id], (error, results) => {
+    const query =
+      'UPDATE Movies SET title = ?, year = ?, public = ?, user = ? WHERE id = ?';
+    db.run(
+      query,
+      [movie.title, movie.year, movie.public, userId, movie.id],
+      (error, results) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(results);
+        }
+      }
+    );
+  });
+}
+
+export async function get(id, userId) {
+  return new Promise((resolve, reject) => {
+    const query =
+      'SELECT * FROM Movies WHERE id = ? AND (user = ? OR public = 1)';
+    db.get(query, [id, userId], (error, results) => {
       if (error) {
         reject(error);
       } else {
@@ -87,10 +79,11 @@ function update(movie) {
   });
 }
 
-export async function get(id) {
+export async function remove(id, userId) {
   return new Promise((resolve, reject) => {
-    const query = 'SELECT * FROM Movies WHERE id = ?';
-    db.get(query, [id], (error, results) => {
+    const query =
+      'DELETE FROM Movies WHERE id = ? AND (user = ? OR public = 1)';
+    db.run(query, [id, userId], (error, results) => {
       if (error) {
         reject(error);
       } else {
@@ -100,15 +93,10 @@ export async function get(id) {
   });
 }
 
-export async function remove(id) {
-  return new Promise((resolve, reject) => {
-    const query = 'DELETE FROM Movies WHERE id = ?';
-    db.run(query, [id], (error, results) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(results);
-      }
-    });
-  });
+export async function rate(rating) {
+  const deleteQuery = 'DELETE FROM Ratings WHERE movie = ? AND user = ?';
+  await db.run(deleteQuery, [rating.movie, rating.user]);
+  const insertQuery =
+    'INSERT INTO Ratings (movie, user, rating) VALUES (?, ?, ?)';
+  return db.run(insertQuery, [rating.movie, rating.user, rating.rating]);
 }
