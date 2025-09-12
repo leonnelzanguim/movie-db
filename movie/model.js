@@ -2,16 +2,8 @@ import { db } from './../db.js';
 
 export async function getAll(userId) {
   return new Promise((resolve, reject) => {
-    const query = `SELECT Movies.*,
-                    count(Ratings.rating) AS numOfRatings,
-                    sum(Ratings.rating) AS sumOfRatings,
-                    r.rating AS userRating
-                    FROM Movies
-                    LEFT JOIN Ratings ON Movies.id = Ratings.movie
-                    LEFT JOIN Ratings AS r ON Movies.id = r.movie AND r.user = ?
-                    WHERE Movies.user = ? OR public = 1
-                    GROUP BY Movies.id;`;
-    db.all(query, [userId, userId], (error, results) => {
+    const query = `SELECT * FROM Movies WHERE user = ? OR public = 1`;
+    db.all(query, [userId], (error, results) => {
       if (error) {
         reject(error);
       } else {

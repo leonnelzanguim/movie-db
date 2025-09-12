@@ -1,17 +1,38 @@
 import { getAll, remove, get, save, rate } from './model.js';
-import { render } from './view.js';
-import { render as form } from './form.js';
-
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-import { readFileSync } from 'fs';
 
 export async function listAction(request, response) {
-  const movies = await getAll(request.user.id);
-  response.render(dirname(fileURLToPath(import.meta.url)) + '/views/list', {
-    movies,
-  });
+  try {
+    const movies = await getAll(1);
+    const movieResponse = {
+      movies,
+      links: [{ rel: 'self', href: request.baseUrl + '/' }],
+    };
+
+    response.json(movieResponse);
+  } catch (error) {
+    console.error(e);
+    response.status(500).send('An error happened');
+  }
+}
+
+export async function detailAction(request, response) {
+  try {
+    const movie = await get(request.params.id, 1);
+
+    if (!movie) {
+      response.status(404).send('Not Found');
+      return;
+    }
+
+    const moviesResponse = {
+      ...movie,
+      links: [{ rel: 'self', href: `${request.baseUrl}/${movie.id}` }],
+    };
+    response.json(moviesResponse);
+  } catch (error) {
+    console.error(error);
+    response.status(500).send('An error happened');
+  }
 }
 
 export async function removeAction(request, response) {
